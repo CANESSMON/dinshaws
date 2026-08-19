@@ -83,17 +83,26 @@ const compressImage = (file: File, maxWidth = 350, maxHeight = 350, quality = 0.
           return;
         }
 
+        // Keep PNG and WebP as image/png to preserve transparent backgrounds
+        const outputMimeType = file.type === "image/png" || file.type === "image/webp" ? "image/png" : "image/jpeg";
+
+        // If converting to JPEG, fill the background with white instead of letting it default to black
+        if (outputMimeType === "image/jpeg") {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, width, height);
+        }
+
         ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              resolve(new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() }));
+              resolve(new File([blob], file.name, { type: outputMimeType, lastModified: Date.now() }));
             } else {
               resolve(file);
             }
           },
-          "image/jpeg",
-          quality
+          outputMimeType,
+          outputMimeType === "image/jpeg" ? quality : undefined
         );
       };
       img.onerror = () => resolve(file);
