@@ -61,6 +61,7 @@ export function ProductCard({
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="product-photo"
             priority
+            unoptimized={product.imageSrc.startsWith("data:")}
           />
         ) : (
           <div className="product-no-image-fallback">

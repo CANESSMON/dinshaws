@@ -58,6 +58,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                   className="cart-page-photo"
                   sizes="100px"
                   priority
+                  unoptimized={product.imageSrc.startsWith("data:")}
                 />
               </div>
 

@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 
 export async function POST(req: Request) {
   try {
@@ -14,22 +12,15 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save to public/uploads
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    // Convert file to Base64 data URL so it can be saved in the database
+    const base64Data = buffer.toString("base64");
+    const mimeType = file.type || "image/png";
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const filename = `${Date.now()}_${safeName}`;
-    const filePath = path.join(uploadsDir, filename);
-
-    fs.writeFileSync(filePath, buffer);
-
-    const publicUrl = `/uploads/${filename}`;
-    return NextResponse.json({ success: true, url: publicUrl });
+    return NextResponse.json({ success: true, url: dataUrl });
   } catch (error) {
     console.error("Image upload API error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }
+

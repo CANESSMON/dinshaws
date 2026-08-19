@@ -48,6 +48,60 @@ const CATEGORY_DEFAULT_SECTIONS: Record<number, string[]> = {
   4: ["SEV & BHUJIYA", "MIXTURE", "GATHIYA", "CHIPS & SNACKS"], // Namkeen
 };
 
+/**
+ * Helper to compress and resize images client-side before upload to reduce database payload size
+ */
+const compressImage = (file: File, maxWidth = 350, maxHeight = 350, quality = 0.7): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = document.createElement("img");
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() }));
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 export default function AdminPage() {
   const router = useRouter();
 
@@ -193,14 +247,21 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (file) {
       setUploadingImage(true);
-      const uploadedUrl = await uploadImageAsync(file);
-      if (uploadedUrl) {
-        setImageSrc(uploadedUrl);
-        setShowImage(true);
-      } else {
+      try {
+        const compressed = await compressImage(file);
+        const uploadedUrl = await uploadImageAsync(compressed);
+        if (uploadedUrl) {
+          setImageSrc(uploadedUrl);
+          setShowImage(true);
+        } else {
+          alert("Image upload failed! Please try again.");
+        }
+      } catch (err) {
+        console.error("Error during image upload/compression:", err);
         alert("Image upload failed! Please try again.");
+      } finally {
+        setUploadingImage(false);
       }
-      setUploadingImage(false);
     }
   };
 
@@ -743,7 +804,14 @@ export default function AdminPage() {
                       <div className="selected-preview-bar">
                         <span className="preset-label">Active Image:</span>
                         <div className="preview-thumb-box">
-                          <Image src={imageSrc} alt="Preview" width={48} height={48} className="preset-photo" />
+                          <Image
+                            src={imageSrc}
+                            alt="Preview"
+                            width={48}
+                            height={48}
+                            className="preset-photo"
+                            unoptimized={imageSrc.startsWith("data:")}
+                          />
                         </div>
                         <button
                           type="button"
