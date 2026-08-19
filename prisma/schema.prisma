@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  userId         String     @id
+  name           String
+  mobile         String
+  faceData       String     @db.Text
+  faceDescriptor String?    @db.Text // Store the 128-dimensional array as a serialized string
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  purchases      Purchase[]
+}
+
+model Purchase {
+  id         String   @id @default(uuid())
+  userId     String
+  userName   String
+  totalItems Int
+  timestamp  DateTime @default(now())
+  items      Json     // Array of items purchased: [{ id, name, quantity }]
+  user       User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  name         String
+  imageSrc     String
+  sectionTitle String
+  categoryId   Int
+  orderIndex   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Requirement {
+  id             String   @id @default(uuid())
+  date           String   // YYYY-MM-DD format for the purchase date
+  items          Json     // Aggregated items: [{ name, totalQuantity }]
+  totalItems     Int      @default(0)
+  totalPurchases Int      @default(0)
+  pushedAt       DateTime @default(now())
+  pushedBy       String   @default("superadmin")
+}
+
+model AdminCredential {
+  role     String @id // "dev" or "super"
+  username String
+  password String
+}
