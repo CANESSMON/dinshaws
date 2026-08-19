@@ -73,6 +73,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const nameRegex = /^[A-Za-z\s]+$/;
+    if (!nameRegex.test(name)) {
+      return NextResponse.json({ error: "Employee Name should contain only alphabets." }, { status: 400 });
+    }
+
+    const mobileRegex = /^\d{10}$/;
+    if (!mobileRegex.test(mobile)) {
+      return NextResponse.json({ error: "Mobile number must contain exactly 10 digits." }, { status: 400 });
+    }
+
     // Check duplication
     const exists = await prisma.user.findUnique({
       where: { userId: userId.trim() },
@@ -116,6 +126,20 @@ export async function PUT(req: Request) {
     
     if (!exists) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    }
+
+    if (name !== undefined) {
+      const nameRegex = /^[A-Za-z\s]+$/;
+      if (!nameRegex.test(name)) {
+        return NextResponse.json({ error: "Employee Name should contain only alphabets." }, { status: 400 });
+      }
+    }
+
+    if (mobile !== undefined) {
+      const mobileRegex = /^\d{10}$/;
+      if (!mobileRegex.test(mobile)) {
+        return NextResponse.json({ error: "Mobile number must contain exactly 10 digits." }, { status: 400 });
+      }
     }
 
     const updatedUser = await prisma.user.update({

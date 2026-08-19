@@ -26,6 +26,18 @@ export async function POST(req: Request) {
       date ||
       new Date().toLocaleDateString("en-CA"); // en-CA gives YYYY-MM-DD
 
+    // Prevent duplicate push by checking if a requirement record already exists for this date
+    const existing = await prisma.requirement.findFirst({
+      where: { date: targetDate }
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Today's requirements have already been pushed." },
+        { status: 400 }
+      );
+    }
+
     // Build day boundaries in local time
     const startOfDay = new Date(`${targetDate}T00:00:00`);
     const endOfDay = new Date(`${targetDate}T23:59:59.999`);

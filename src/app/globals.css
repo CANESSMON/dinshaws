@@ -4269,3 +4269,29 @@ label,
     transform: translateY(0);
   }
 }
+
+/* Custom validation styles */
+.form-input.input-error {
+  border-color: #de251e !important;
+  box-shadow: 0 0 0 1px #de251e !important;
+}
+
+.submit-registration-btn:disabled,
+.modal-submit-btn:disabled {
+  background: #cbd5e1 !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.validation-error-msg {
+  color: #de251e;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: slideDownFade 0.2s ease-out;
+}

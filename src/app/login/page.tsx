@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 function LoginFormContent() {
   const router = useRouter();
@@ -11,6 +11,7 @@ function LoginFormContent() {
   const [password, setPassword] = useState<string>("");
   const [loginError, setLoginError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   // If already authenticated, redirect to appropriate portal
   useEffect(() => {
@@ -94,15 +95,37 @@ function LoginFormContent() {
 
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="form-input"
-              required
-              disabled={isLoading}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="form-input"
+                style={{ paddingRight: "44px" }}
+                required
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: 0
+                }}
+              >
+                {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
 
           <button type="submit" className="login-submit-btn" disabled={isLoading}>

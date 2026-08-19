@@ -18,6 +18,7 @@ import {
   Send
 } from "lucide-react";
 import { extractFaceDescriptor, extractFaceDescriptorAsync } from "@/lib/faceX";
+import { CustomDialog } from "@/components/CustomDialog";
 
 export interface EmployeeUser {
   userId: string;
@@ -149,12 +150,91 @@ export default function SuperAdminPage() {
   const [editIsActive, setEditIsActive] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  // Dynamic Validation Logic
+  const newUserNameError = newUserName && !/^[A-Za-z\s]+$/.test(newUserName)
+    ? "Employee Name should contain only alphabets."
+    : "";
+
+  const newUserMobileError = newUserMobile && !/^\d{10}$/.test(newUserMobile)
+    ? "Mobile number must contain exactly 10 digits."
+    : "";
+
+  const editNameError = editName && !/^[A-Za-z\s]+$/.test(editName)
+    ? "Employee Name should contain only alphabets."
+    : "";
+
+  const editMobileError = editMobile && !/^\d{10}$/.test(editMobile)
+    ? "Mobile number must contain exactly 10 digits."
+    : "";
+
+  const isRegisterDisabled = !newUserName.trim() || !newUserId.trim() || !newUserMobile.trim() || !!newUserNameError || !!newUserMobileError;
+  const isUpdateDisabled = !editName.trim() || !editMobile.trim() || !!editNameError || !!editMobileError;
+
+  // Custom dialog alert/confirm state
+  const [dialogState, setDialogState] = useState<{
+    isOpen: boolean;
+    type: "info" | "success" | "error" | "confirm";
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }>({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: ""
+  });
+
+  const showAlert = (message: string, type: "info" | "success" | "error" = "info", title?: string) => {
+    const defaultTitles = {
+      info: "Information",
+      success: "Success",
+      error: "Error"
+    };
+    setDialogState({
+      isOpen: true,
+      type,
+      title: title || defaultTitles[type],
+      message
+    });
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void, title = "Confirm Action") => {
+    setDialogState({
+      isOpen: true,
+      type: "confirm",
+      title,
+      message,
+      onConfirm
+    });
+  };
+
   // Transactions State
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState<boolean>(false);
   const [isPushingRequirement, setIsPushingRequirement] = useState<boolean>(false);
+  const [hasPushedToday, setHasPushedToday] = useState<boolean>(false);
+
+  const checkTodayRequirementPushed = async () => {
+    try {
+      const todayDate = new Date().toLocaleDateString("en-CA");
+      const res = await fetch("/api/requirements");
+      if (res.ok) {
+        const data = await res.json();
+        const alreadyPushed = data.some((req: any) => req.date === todayDate);
+        setHasPushedToday(alreadyPushed);
+      }
+    } catch (err) {
+      console.error("Failed to check if requirements are pushed today:", err);
+    }
+  };
 
   const handlePushRequirement = async () => {
+    if (hasPushedToday) {
+      showAlert("Today's requirements have already been pushed.", "info");
+      return;
+    }
+
     setIsPushingRequirement(true);
     try {
       const todayDate = new Date().toLocaleDateString("en-CA");
@@ -165,14 +245,18 @@ export default function SuperAdminPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Successfully pushed today's requirements (${data.requirement.totalItems} items from ${data.requirement.totalPurchases} purchases) to the Vendor Supply Portal!`);
+        showAlert(`Successfully pushed today's requirements (${data.requirement.totalItems} items from ${data.requirement.totalPurchases} purchases) to the Vendor Supply Portal!`, "success");
+        setHasPushedToday(true);
       } else {
         const errData = await res.json();
-        alert(`Failed to push requirements: ${errData.error || "Unknown error"}`);
+        showAlert(`Failed to push requirements: ${errData.error || "Unknown error"}`, "error");
+        if (errData.error && errData.error.includes("already been pushed")) {
+          setHasPushedToday(true);
+        }
       }
     } catch (err) {
       console.error("Push requirements error", err);
-      alert("An unexpected error occurred while pushing requirements.");
+      showAlert("An unexpected error occurred while pushing requirements.", "error");
     } finally {
       setIsPushingRequirement(false);
     }
@@ -211,6 +295,7 @@ export default function SuperAdminPage() {
         fetchEmployees();
       } else if (activeTab === 'transactions') {
         fetchTransactions();
+        checkTodayRequirementPushed();
       }
     }
   }, [isAuthenticated, activeTab]);
@@ -247,7 +332,7 @@ export default function SuperAdminPage() {
       })
       .catch((err) => {
         console.error("Failed to access camera", err);
-        alert("Unable to open camera. Please check video device permissions.");
+        showAlert("Unable to open camera. Please check video device permissions.", "error");
       });
   };
 
@@ -303,7 +388,19 @@ export default function SuperAdminPage() {
   const handleRegisterUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserId.trim() || !newUserMobile.trim()) {
-      alert("Please fill in all text input fields.");
+      showAlert("Please fill in all text input fields.", "error");
+      return;
+    }
+
+    const nameRegex = /^[A-Za-z\s]+$/;
+    if (!nameRegex.test(newUserName)) {
+      showAlert("Employee Name should contain only alphabets.", "error");
+      return;
+    }
+
+    const mobileRegex = /^\d{10}$/;
+    if (!mobileRegex.test(newUserMobile)) {
+      showAlert("Mobile number must contain exactly 10 digits.", "error");
       return;
     }
 
@@ -322,7 +419,7 @@ export default function SuperAdminPage() {
       });
 
       if (res.ok) {
-        alert("Employee successfully registered!");
+        showAlert("Employee successfully registered!", "success");
         setNewUserName("");
         setNewUserId("");
         setNewUserMobile("");
@@ -331,11 +428,11 @@ export default function SuperAdminPage() {
         fetchEmployees();
       } else {
         const errData = await res.json();
-        alert(`Error: ${errData.error || "Failed to register user"}`);
+        showAlert(`Error: ${errData.error || "Failed to register user"}`, "error");
       }
     } catch (err) {
       console.error("User registration error", err);
-      alert("An unexpected error occurred during registration.");
+      showAlert("An unexpected error occurred during registration.", "error");
     } finally {
       setIsRegistering(false);
     }
@@ -365,6 +462,18 @@ export default function SuperAdminPage() {
     e.preventDefault();
     if (!editingEmployee) return;
 
+    const nameRegex = /^[A-Za-z\s]+$/;
+    if (!nameRegex.test(editName)) {
+      showAlert("Employee Name should contain only alphabets.", "error");
+      return;
+    }
+
+    const mobileRegex = /^\d{10}$/;
+    if (!mobileRegex.test(editMobile)) {
+      showAlert("Mobile number must contain exactly 10 digits.", "error");
+      return;
+    }
+
     setIsUpdating(true);
     try {
       const res = await fetch("/api/users", {
@@ -381,16 +490,16 @@ export default function SuperAdminPage() {
       });
 
       if (res.ok) {
-        alert("Employee details updated successfully!");
+        showAlert("Employee details updated successfully!", "success");
         fetchEmployees();
         setEditingEmployee(null);
       } else {
         const errData = await res.json();
-        alert(`Error: ${errData.error || "Failed to update employee details"}`);
+        showAlert(`Error: ${errData.error || "Failed to update employee details"}`, "error");
       }
     } catch (err) {
       console.error("Failed to update employee", err);
-      alert("An unexpected error occurred during update.");
+      showAlert("An unexpected error occurred during update.", "error");
     } finally {
       setIsUpdating(false);
     }
@@ -404,7 +513,7 @@ export default function SuperAdminPage() {
       if (res.ok) {
         fetchEmployees();
       } else {
-        alert("Failed to delete user profile.");
+        showAlert("Failed to delete user profile.", "error");
       }
     } catch (err) {
       console.error("Failed to delete employee", err);
@@ -491,9 +600,15 @@ export default function SuperAdminPage() {
                         placeholder="e.g. Amit Sharma"
                         value={newUserName}
                         onChange={(e) => setNewUserName(e.target.value)}
-                        className="form-input"
+                        className={`form-input ${newUserNameError ? "input-error" : ""}`}
                         required
                       />
+                      {newUserNameError && (
+                        <div className="validation-error-msg">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>{newUserNameError}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="form-group">
@@ -515,15 +630,21 @@ export default function SuperAdminPage() {
                         placeholder="e.g. 9876543210"
                         value={newUserMobile}
                         onChange={(e) => setNewUserMobile(e.target.value)}
-                        className="form-input"
+                        className={`form-input ${newUserMobileError ? "input-error" : ""}`}
                         required
                       />
+                      {newUserMobileError && (
+                        <div className="validation-error-msg">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>{newUserMobileError}</span>
+                        </div>
+                      )}
                     </div>
 
                     <button 
                       type="submit" 
                       className="submit-registration-btn"
-                      disabled={isRegistering}
+                      disabled={isRegistering || isRegisterDisabled}
                     >
                       {isRegistering ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -692,17 +813,17 @@ export default function SuperAdminPage() {
               <button
                 type="button"
                 onClick={handlePushRequirement}
-                disabled={isPushingRequirement || transactions.length === 0}
+                disabled={isPushingRequirement || transactions.length === 0 || hasPushedToday}
                 className="submit-registration-btn"
                 style={{ width: "auto", padding: "10px 18px", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "8px", margin: 0 }}
-                title="Aggregate today's purchases and send requirement list to Vendor Portal"
+                title={hasPushedToday ? "Today's requirements have already been pushed to the Vendor Supply Portal." : "Aggregate today's purchases and send requirement list to Vendor Portal"}
               >
                 {isPushingRequirement ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                <span>PUSH REQUIREMENTS TO VENDOR</span>
+                <span>{hasPushedToday ? "REQUIREMENTS PUSHED" : "PUSH REQUIREMENTS TO VENDOR"}</span>
               </button>
             </div>
 
@@ -836,9 +957,15 @@ export default function SuperAdminPage() {
                       placeholder="e.g. Amit Sharma"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="form-input"
+                      className={`form-input ${editNameError ? "input-error" : ""}`}
                       required
                     />
+                    {editNameError && (
+                      <div className="validation-error-msg">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>{editNameError}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -848,9 +975,15 @@ export default function SuperAdminPage() {
                       placeholder="e.g. 9876543210"
                       value={editMobile}
                       onChange={(e) => setEditMobile(e.target.value)}
-                      className="form-input"
+                      className={`form-input ${editMobileError ? "input-error" : ""}`}
                       required
                     />
+                    {editMobileError && (
+                      <div className="validation-error-msg">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>{editMobileError}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -934,10 +1067,13 @@ export default function SuperAdminPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm(`Are you sure you want to permanently delete the profile for ${editingEmployee.name}?`)) {
-                      handleDeleteEmployee(editingEmployee.userId);
-                      setEditingEmployee(null);
-                    }
+                    showConfirm(
+                      `Are you sure you want to permanently delete the profile for ${editingEmployee.name}?`,
+                      () => {
+                        handleDeleteEmployee(editingEmployee.userId);
+                        setEditingEmployee(null);
+                      }
+                    );
                   }}
                   className="delete-employee-modal-btn"
                 >
@@ -959,7 +1095,7 @@ export default function SuperAdminPage() {
                   <button
                     type="submit"
                     className="modal-submit-btn"
-                    disabled={isUpdating}
+                    disabled={isUpdating || isUpdateDisabled}
                   >
                     {isUpdating ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -973,6 +1109,16 @@ export default function SuperAdminPage() {
           </div>
         </div>
       )}
+
+      <CustomDialog
+        isOpen={dialogState.isOpen}
+        type={dialogState.type}
+        title={dialogState.title}
+        message={dialogState.message}
+        onConfirm={dialogState.onConfirm}
+        onCancel={dialogState.onCancel}
+        onClose={() => setDialogState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
   Loader2,
   X,
   Eye,
+  EyeOff,
   CheckSquare,
   Square,
   Save,
@@ -40,6 +41,7 @@ import {
   CircleUserRound,
   Key
 } from "lucide-react";
+import { CustomDialog } from "@/components/CustomDialog";
 
 const CATEGORY_DEFAULT_SECTIONS: Record<number, string[]> = {
   1: ["CUPS & CONES", "KULFI", "BARS & CANDIES", "TUBS & PACKS"], // Ice Cream
@@ -149,6 +151,48 @@ export default function AdminPage() {
   const [vendorUser, setVendorUser] = useState<string>("");
   const [vendorPass, setVendorPass] = useState<string>("");
   const [isSavingCreds, setIsSavingCreds] = useState<boolean>(false);
+  const [showDevPass, setShowDevPass] = useState<boolean>(false);
+  const [showSuperPass, setShowSuperPass] = useState<boolean>(false);
+  const [showVendorPass, setShowVendorPass] = useState<boolean>(false);
+
+  // Custom dialog alert/confirm state
+  const [dialogState, setDialogState] = useState<{
+    isOpen: boolean;
+    type: "info" | "success" | "error" | "confirm";
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }>({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: ""
+  });
+
+  const showAlert = (message: string, type: "info" | "success" | "error" = "info", title?: string) => {
+    const defaultTitles = {
+      info: "Information",
+      success: "Success",
+      error: "Error"
+    };
+    setDialogState({
+      isOpen: true,
+      type,
+      title: title || defaultTitles[type],
+      message
+    });
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void, title = "Confirm Action") => {
+    setDialogState({
+      isOpen: true,
+      type: "confirm",
+      title,
+      message,
+      onConfirm
+    });
+  };
 
   // Authenticate user check
   useEffect(() => {
@@ -191,7 +235,7 @@ export default function AdminPage() {
   const handleSaveCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!devUser.trim() || !devPass || !superUser.trim() || !superPass || !vendorUser.trim() || !vendorPass) {
-      alert("All credential fields are required!");
+      showAlert("All credential fields are required!", "error");
       return;
     }
 
@@ -208,14 +252,14 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        alert("Admin & Vendor credentials updated successfully in database!");
+        showAlert("Admin & Vendor credentials updated successfully in database!", "success");
         setIsCredModalOpen(false);
       } else {
-        alert("Failed to update credentials.");
+        showAlert("Failed to update credentials.", "error");
       }
     } catch (e) {
       console.error(e);
-      alert("Error connecting to credential server.");
+      showAlert("Error connecting to credential server.", "error");
     } finally {
       setIsSavingCreds(false);
     }
@@ -263,11 +307,11 @@ export default function AdminPage() {
           setImageSrc(uploadedUrl);
           setShowImage(true);
         } else {
-          alert("Image upload failed! Please try again.");
+          showAlert("Image upload failed! Please try again.", "error");
         }
       } catch (err) {
         console.error("Error during image upload/compression:", err);
-        alert("Image upload failed! Please try again.");
+        showAlert("Image upload failed! Please try again.", "error");
       } finally {
         setUploadingImage(false);
       }
@@ -277,13 +321,13 @@ export default function AdminPage() {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productName.trim()) {
-      alert("Please enter a product name!");
+      showAlert("Please enter a product name!", "error");
       return;
     }
 
     const targetSection = sectionTitle === "CUSTOM" ? customSection : sectionTitle;
     if (!targetSection.trim()) {
-      alert("Please enter or select a section name!");
+      showAlert("Please enter or select a section name!", "error");
       return;
     }
 
@@ -301,22 +345,25 @@ export default function AdminPage() {
       setIsAddModalOpen(false);
       await refreshData();
     } else {
-      alert("Failed to add product. Please try again.");
+      showAlert("Failed to add product. Please try again.", "error");
     }
     setIsLoading(false);
   };
 
   const handleDeleteProduct = async (secTitle: string, productId: string, name: string) => {
-    if (confirm(`Are you sure you want to delete "${name}"?`)) {
-      setIsLoading(true);
-      const success = await deleteProductAsync(selectedCategory, secTitle, productId);
-      if (success) {
-        await refreshData();
-      } else {
-        alert("Failed to delete product.");
+    showConfirm(
+      `Are you sure you want to delete "${name}"?`,
+      async () => {
+        setIsLoading(true);
+        const success = await deleteProductAsync(selectedCategory, secTitle, productId);
+        if (success) {
+          await refreshData();
+        } else {
+          showAlert("Failed to delete product.", "error");
+        }
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }
+    );
   };
 
   // Drag and Drop Handlers for Sections
@@ -446,18 +493,21 @@ export default function AdminPage() {
     if (success) {
       setOriginalSections(JSON.parse(JSON.stringify(sections)));
       setHasUnsavedChanges(false);
-      alert("Catalog order and layout positions saved successfully!");
+      showAlert("Catalog order and layout positions saved successfully!", "success");
     } else {
-      alert("Failed to save changes. Please try again.");
+      showAlert("Failed to save changes. Please try again.", "error");
     }
     setIsLoading(false);
   };
 
   const handleDiscardChanges = () => {
-    if (confirm("Are you sure you want to discard unsaved layout changes?")) {
-      setSections(JSON.parse(JSON.stringify(originalSections)));
-      setHasUnsavedChanges(false);
-    }
+    showConfirm(
+      "Are you sure you want to discard unsaved layout changes?",
+      () => {
+        setSections(JSON.parse(JSON.stringify(originalSections)));
+        setHasUnsavedChanges(false);
+      }
+    );
   };
 
   // Render Developer Login Screen if not authenticated
@@ -956,13 +1006,35 @@ export default function AdminPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Dev Password</label>
-                    <input
-                      type="password"
-                      value={devPass}
-                      onChange={(e) => setDevPass(e.target.value)}
-                      className="form-input"
-                      required
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showDevPass ? "text" : "password"}
+                        value={devPass}
+                        onChange={(e) => setDevPass(e.target.value)}
+                        className="form-input"
+                        style={{ paddingRight: "44px" }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowDevPass(!showDevPass)}
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--text-muted)",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: 0
+                        }}
+                      >
+                        {showDevPass ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -983,13 +1055,35 @@ export default function AdminPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Super Password</label>
-                    <input
-                      type="password"
-                      value={superPass}
-                      onChange={(e) => setSuperPass(e.target.value)}
-                      className="form-input"
-                      required
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showSuperPass ? "text" : "password"}
+                        value={superPass}
+                        onChange={(e) => setSuperPass(e.target.value)}
+                        className="form-input"
+                        style={{ paddingRight: "44px" }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSuperPass(!showSuperPass)}
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--text-muted)",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: 0
+                        }}
+                      >
+                        {showSuperPass ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1010,13 +1104,35 @@ export default function AdminPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Vendor Password</label>
-                    <input
-                      type="password"
-                      value={vendorPass}
-                      onChange={(e) => setVendorPass(e.target.value)}
-                      className="form-input"
-                      required
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showVendorPass ? "text" : "password"}
+                        value={vendorPass}
+                        onChange={(e) => setVendorPass(e.target.value)}
+                        className="form-input"
+                        style={{ paddingRight: "44px" }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowVendorPass(!showVendorPass)}
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--text-muted)",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: 0
+                        }}
+                      >
+                        {showVendorPass ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1041,6 +1157,16 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      <CustomDialog
+        isOpen={dialogState.isOpen}
+        type={dialogState.type}
+        title={dialogState.title}
+        message={dialogState.message}
+        onConfirm={dialogState.onConfirm}
+        onCancel={dialogState.onCancel}
+        onClose={() => setDialogState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
