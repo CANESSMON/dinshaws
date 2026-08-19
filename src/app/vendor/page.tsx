@@ -35,155 +35,7 @@ interface Requirement {
   pushedBy: string;
 }
 
-// Dynamic mock fallback dates (covering the past 7 days)
-const getDateStr = (daysAgo: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toLocaleDateString("en-CA");
-};
-
-const todayStr = getDateStr(0);
-
-const MOCK_REQUIREMENTS: Requirement[] = [
-  {
-    id: "mock-today-1",
-    date: todayStr,
-    pushedAt: new Date().toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 42,
-    totalItems: 216,
-    items: [
-      { name: "Aahar Milk 500 ml", totalQuantity: 32 },
-      { name: "Fresh Dahi 200 ml", totalQuantity: 22 },
-      { name: "Fresh Paneer 200g", totalQuantity: 18 },
-      { name: "Butter 100gm", totalQuantity: 14 },
-      { name: "Mishti Dahi 160gm", totalQuantity: 12 },
-      { name: "Sarvottam Gold 1 L", totalQuantity: 10 },
-      { name: "Chocolate Ice Cream 500ml", totalQuantity: 9 },
-      { name: "Vanilla Tub 1 L", totalQuantity: 8 },
-      { name: "Mango Shrikhand 250g", totalQuantity: 8 },
-      { name: "Sweet Lassi 200ml", totalQuantity: 15 },
-      { name: "Kesar Pista Kulfi", totalQuantity: 12 },
-      { name: "Pure Cow Ghee 500ml", totalQuantity: 6 },
-      { name: "Cheese Slices 200g", totalQuantity: 7 },
-      { name: "Flavored Badam Milk 200ml", totalQuantity: 11 },
-      { name: "Phoorti Toned Milk 500ml", totalQuantity: 20 },
-      { name: "Choco Dip Cone", totalQuantity: 14 },
-    ],
-  },
-  {
-    id: "mock-day-1",
-    date: getDateStr(1),
-    pushedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 25,
-    totalItems: 92,
-    items: [
-      { name: "Aahar Milk 500 ml", totalQuantity: 20 },
-      { name: "Fresh Dahi 200 ml", totalQuantity: 12 },
-      { name: "Fresh Paneer 200g", totalQuantity: 10 },
-      { name: "Butter 100gm", totalQuantity: 6 },
-      { name: "Mishti Dahi 160gm", totalQuantity: 8 },
-      { name: "Sarvottam Gold 1 L", totalQuantity: 4 },
-      { name: "Aahar Milk 1 L", totalQuantity: 20 },
-      { name: "Phoorti Milk 500 ml", totalQuantity: 12 },
-    ],
-  },
-  {
-    id: "mock-day-2",
-    date: getDateStr(2),
-    pushedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 14,
-    totalItems: 48,
-    items: [
-      { name: "Aahar Milk 500 ml", totalQuantity: 20 },
-      { name: "Fresh Dahi 200 ml", totalQuantity: 12 },
-      { name: "Kadhi Dahi 1 kg", totalQuantity: 8 },
-      { name: "Sarvottam Gold 500 ml", totalQuantity: 8 },
-    ],
-  },
-  {
-    id: "mock-day-3",
-    date: getDateStr(3),
-    pushedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 31,
-    totalItems: 115,
-    items: [
-      { name: "Aahar Milk 500 ml", totalQuantity: 40 },
-      { name: "Sarvottam Gold 1 L", totalQuantity: 25 },
-      { name: "Fresh Paneer 500g", totalQuantity: 18 },
-      { name: "Fresh Dahi 5 kg", totalQuantity: 12 },
-      { name: "Butter 100gm", totalQuantity: 20 },
-    ],
-  },
-  {
-    id: "mock-day-4",
-    date: getDateStr(4),
-    pushedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 22,
-    totalItems: 84,
-    items: [
-      { name: "Phoorti Milk 180 ml", totalQuantity: 32 },
-      { name: "Aahar Milk 2 L", totalQuantity: 16 },
-      { name: "Mishti Dahi 160gm", totalQuantity: 20 },
-      { name: "Fresh Paneer 1 kg", totalQuantity: 16 },
-    ],
-  },
-  {
-    id: "mock-day-5",
-    date: getDateStr(5),
-    pushedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 19,
-    totalItems: 63,
-    items: [
-      { name: "Aahar Milk 1 L", totalQuantity: 22 },
-      { name: "Amrik Milk 500 ml", totalQuantity: 18 },
-      { name: "Fresh Dahi 200 ml", totalQuantity: 15 },
-      { name: "Butter 100gm", totalQuantity: 8 },
-    ],
-  },
-  {
-    id: "mock-day-6",
-    date: getDateStr(6),
-    pushedAt: new Date(Date.now() - 6 * 86400000).toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 28,
-    totalItems: 102,
-    items: [
-      { name: "Aahar Milk 500 ml", totalQuantity: 35 },
-      { name: "Sarvottam Gold 500 ml", totalQuantity: 28 },
-      { name: "Fresh Paneer 200g", totalQuantity: 24 },
-      { name: "Kadhi Dahi 5 kg", totalQuantity: 15 },
-    ],
-  },
-  {
-    id: "mock-day-7",
-    date: getDateStr(7),
-    pushedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    pushedBy: "superadmin",
-    totalPurchases: 16,
-    totalItems: 55,
-    items: [
-      { name: "Aahar Milk 1 L", totalQuantity: 20 },
-      { name: "Fresh Dahi 1 kg", totalQuantity: 15 },
-      { name: "Malai Paneer 500g", totalQuantity: 12 },
-      { name: "Mishti Dahi 160gm", totalQuantity: 8 },
-    ],
-  },
-];
-
-const mergeRequirements = (dbData: Requirement[]) => {
-  const datesInDb = new Set(dbData.map((r) => r.date));
-  const missingMocks = MOCK_REQUIREMENTS.filter((m) => !datesInDb.has(m.date));
-  const combined = [...dbData, ...missingMocks];
-  return combined.sort(
-    (a, b) => new Date(b.pushedAt).getTime() - new Date(a.pushedAt).getTime()
-  );
-};
+const todayStr = new Date().toLocaleDateString("en-CA");
 
 export default function VendorPage() {
   const router = useRouter();
@@ -224,23 +76,20 @@ export default function VendorPage() {
       const res = await fetch("/api/requirements");
       if (res.ok) {
         const data = await res.json();
-        const merged = mergeRequirements(Array.isArray(data) ? data : []);
-        setRequirements(merged);
-        if (merged.length > 0) {
-          setExpandedCards((prev) => ({ ...prev, [merged[0].id]: true }));
+        const dbData = Array.isArray(data) ? data : [];
+        const sorted = dbData.sort(
+          (a, b) => new Date(b.pushedAt).getTime() - new Date(a.pushedAt).getTime()
+        );
+        setRequirements(sorted);
+        if (sorted.length > 0) {
+          setExpandedCards((prev) => ({ ...prev, [sorted[0].id]: true }));
         }
       } else {
-        setRequirements(MOCK_REQUIREMENTS);
-        if (MOCK_REQUIREMENTS.length > 0) {
-          setExpandedCards((prev) => ({ ...prev, [MOCK_REQUIREMENTS[0].id]: true }));
-        }
+        setRequirements([]);
       }
     } catch (e) {
-      console.error("Failed to fetch requirements, using fallback data", e);
-      setRequirements(MOCK_REQUIREMENTS);
-      if (MOCK_REQUIREMENTS.length > 0) {
-        setExpandedCards((prev) => ({ ...prev, [MOCK_REQUIREMENTS[0].id]: true }));
-      }
+      console.error("Failed to fetch requirements from database", e);
+      setRequirements([]);
     } finally {
       setIsLoading(false);
     }
