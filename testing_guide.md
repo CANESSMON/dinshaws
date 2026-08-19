@@ -3,7 +3,6 @@
 This guide is designed for QA testers to verify the features, flows, and data transitions of the Dinshaw's Self-Service Kiosk system.
 
 * **Live Deployment Link**: [https://dinshaws.onrender.com](https://dinshaws.onrender.com)
-* **Local Development Link**: [http://localhost:3000](http://localhost:3000)
 
 ---
 
