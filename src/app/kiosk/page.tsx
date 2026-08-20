@@ -12,6 +12,7 @@ import {
   generateTextReceipt,
   generateHtmlReceipt,
   downloadReceiptFile,
+  downloadReceiptPdf,
   printReceiptHtml
 } from "@/lib/receiptHelper";
 
@@ -155,8 +156,8 @@ export default function KioskPage() {
         : [];
 
       if (downloadFlag) {
-        // 1. Generate & Download Canteen Copy
-        const canteenText = generateTextReceipt(
+        // 1. Download Canteen Copy PDF
+        downloadReceiptPdf(
           receiptItems,
           purchase.id,
           purchase.userId,
@@ -164,10 +165,9 @@ export default function KioskPage() {
           settings,
           "canteen"
         );
-        downloadReceiptFile(canteenText, `${purchase.id}_canteen`);
 
-        // 2. Generate & Download Gate Exit Copy
-        const gateText = generateTextReceipt(
+        // 2. Download Gate Exit Copy PDF
+        downloadReceiptPdf(
           receiptItems,
           purchase.id,
           purchase.userId,
@@ -175,7 +175,6 @@ export default function KioskPage() {
           settings,
           "gate"
         );
-        downloadReceiptFile(gateText, `${purchase.id}_gate`);
       } else {
         // 1. Generate & Print Canteen Copy
         const canteenHtml = generateHtmlReceipt(

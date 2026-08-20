@@ -256,6 +256,41 @@ export function downloadReceiptFile(textContent: string, orderId: string) {
   URL.revokeObjectURL(url);
 }
 
+export function downloadReceiptPdf(
+  items: ReceiptItem[],
+  orderId: string,
+  userId: string,
+  userName: string,
+  settings: ReceiptSettings,
+  copyType: "canteen" | "gate"
+) {
+  const textContent = generateTextReceipt(items, orderId, userId, userName, settings, copyType);
+  const lines = textContent.split("\n");
+  const lineCount = lines.length;
+  const padding = 12;
+  const lineHeight = 4.2;
+  const height = Math.max(100, lineCount * lineHeight + padding);
+
+  import("jspdf").then(({ jsPDF }) => {
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: [80, height]
+    });
+
+    doc.setFont("courier", "normal");
+    doc.setFontSize(8.5);
+
+    let y = 8;
+    lines.forEach((line) => {
+      doc.text(line, 4, y);
+      y += lineHeight;
+    });
+
+    doc.save(`receipt_${orderId}_${copyType}.pdf`);
+  });
+}
+
 export function printReceiptHtml(htmlContent: string) {
   const iframe = document.createElement("iframe");
   iframe.style.position = "absolute";

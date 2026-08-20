@@ -12,6 +12,7 @@
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@vladmandic/face-api": "^1.7.15",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.31.0",
     "next": "16.3.0",
     "pg": "^8.23.0",
