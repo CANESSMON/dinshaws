@@ -58,3 +58,11 @@ model AdminCredential {
   username String
   password String
 }
+
+model ReceiptSetting {
+  id            String   @id @default("default")
+  showLogo      Boolean  @default(true)
+  showUser      Boolean  @default(true)
+  showTimestamp Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+}

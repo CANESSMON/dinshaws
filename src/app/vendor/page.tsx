@@ -168,9 +168,9 @@ export default function VendorPage() {
     return true;
   });
 
-  const exportToCSV = (req: Requirement) => {
+  const exportItemsToCSV = (items: RequirementItem[], filename: string) => {
     const headers = ["Index", "Product Name", "Required Quantity"];
-    const rows = (req.items as RequirementItem[]).map((item, idx) => [
+    const rows = items.map((item, idx) => [
       idx + 1,
       `"${item.name}"`,
       item.totalQuantity,
@@ -183,10 +183,19 @@ export default function VendorPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Vendor_Requirements_${req.date}.csv`);
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const exportToCSV = (req: Requirement) => {
+    const timeFormatted = new Date(req.pushedAt).toLocaleTimeString("en-IN").replace(/[:\s]/g, "");
+    exportItemsToCSV(req.items as RequirementItem[], `Vendor_Requirements_${req.date}_${timeFormatted}.csv`);
+  };
+
+  const exportCombinedTodayCSV = () => {
+    exportItemsToCSV(combinedTodayItems, `Vendor_Combined_Requirements_${todayDate}.csv`);
   };
 
   const exportAllHistoryToCSV = () => {
@@ -220,8 +229,28 @@ export default function VendorPage() {
     document.body.removeChild(link);
   };
 
-  const todayItems = (latestToday?.items as RequirementItem[] || []);
-  const todayTotal = todayItems.reduce((acc, i) => acc + i.totalQuantity, 0);
+  // Aggregate all of today's requirement records for the Combined table and metrics
+  const combinedTodayItemsMap: Record<string, number> = {};
+  let combinedTodayTotal = 0;
+  let combinedTodayPurchases = 0;
+
+  for (const req of todayRequirements) {
+    const items = req.items as RequirementItem[];
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        combinedTodayItemsMap[item.name] = (combinedTodayItemsMap[item.name] || 0) + item.totalQuantity;
+        combinedTodayTotal += item.totalQuantity;
+      }
+    }
+    combinedTodayPurchases += req.totalPurchases || 0;
+  }
+
+  const combinedTodayItems = Object.entries(combinedTodayItemsMap)
+    .map(([name, totalQuantity]) => ({ name, totalQuantity }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const todayItems = combinedTodayItems;
+  const todayTotal = combinedTodayTotal;
 
   // ---------- LOGIN SCREEN ----------
   if (!isAuthenticated) {
@@ -497,7 +526,7 @@ export default function VendorPage() {
                     Purchases Today
                   </div>
                   <div className="vendor-kpi-value" style={{ fontSize: "17px", fontWeight: 900, color: "#18181b", marginTop: "2px", fontFamily: "var(--font-heading-family)" }}>
-                    {latestToday ? latestToday.totalPurchases : 0}{" "}
+                    {combinedTodayPurchases}{" "}
                     <span style={{ fontSize: "12px", fontWeight: 600, color: "#71717a" }}>orders</span>
                   </div>
                 </div>
@@ -540,7 +569,7 @@ export default function VendorPage() {
                     Items Required
                   </div>
                   <div className="vendor-kpi-value" style={{ fontSize: "17px", fontWeight: 900, color: "#de251e", marginTop: "2px", fontFamily: "var(--font-heading-family)" }}>
-                    {latestToday ? latestToday.totalItems : 0}{" "}
+                    {combinedTodayTotal}{" "}
                     <span style={{ fontSize: "12px", fontWeight: 600, color: "#71717a" }}>units</span>
                   </div>
                 </div>
@@ -590,193 +619,301 @@ export default function VendorPage() {
             </div>
 
             {/* MAIN TABLE CARD CONTAINER (FITS SCREEN, ONLY TABLE SCROLLS INTERNALLY) */}
-            <div
-              className="admin-card vendor-table-card"
-              style={{
-                background: "#ffffff",
-                border: "1px solid #eaeaea",
-                borderRadius: "20px",
-                padding: "20px 24px",
-                boxShadow: "0 6px 20px rgba(0, 0, 0, 0.03)",
-                width: "100%",
-                flex: 1,
-                minHeight: 0,
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              {/* Header Row with Export CSV */}
+            {isLoading ? (
+              <div style={{ padding: "40px 0", textAlign: "center", color: "#71717a" }}>
+                <Loader2 className="w-6 h-6 animate-spin text-primary" style={{ margin: "0 auto 8px" }} />
+                <p style={{ fontSize: "13px" }}>Loading catalog requirements...</p>
+              </div>
+            ) : !latestToday || todayItems.length === 0 ? (
               <div
-                className="vendor-table-header-row"
+                className="admin-card"
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "14px",
-                  flexWrap: "wrap",
-                  gap: "12px",
-                  flexShrink: 0,
+                  background: "#ffffff",
+                  border: "1px solid #eaeaea",
+                  borderRadius: "20px",
+                  padding: "40px 20px",
+                  textAlign: "center",
+                  color: "#71717a",
                 }}
               >
-                <div>
-                  <h2 style={{ fontSize: "18px", fontWeight: 900, color: "#18181b", margin: 0, fontFamily: "var(--font-heading-family)" }}>
-                    TODAY&apos;S PRODUCT REQUIREMENTS
-                  </h2>
-                  <span style={{ fontSize: "13px", color: "#71717a", fontWeight: 500 }}>
-                    Aggregated product quantities requested from kiosk purchases
-                  </span>
-                </div>
-
-                {/* Export CSV Button */}
-                {latestToday && (
-                  <button
-                    onClick={() => exportToCSV(latestToday)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "8px 16px",
-                      fontSize: "13px",
-                      fontWeight: 800,
-                      borderRadius: "8px",
-                      border: "1px solid rgba(222, 37, 30, 0.3)",
-                      background: "#fef2f2",
-                      color: "#de251e",
-                      cursor: "pointer",
-                      fontFamily: "var(--font-heading-family)",
-                      transition: "background 0.2s ease",
-                    }}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Export CSV</span>
-                  </button>
-                )}
+                <AlertCircle className="w-8 h-8" style={{ margin: "0 auto 8px", opacity: 0.6 }} />
+                <p style={{ fontSize: "14px" }}>No requirement records found for today.</p>
               </div>
-
-              {/* TABLE CONTAINER WRAPPER (FIXED HEADER & FOOTER, ONLY TBODY HAS SMALL SCROLLBAR) */}
-              {isLoading ? (
-                <div style={{ padding: "40px 0", textAlign: "center", color: "#71717a" }}>
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" style={{ margin: "0 auto 8px" }} />
-                  <p style={{ fontSize: "13px" }}>Loading catalog requirements...</p>
-                </div>
-              ) : !latestToday || todayItems.length === 0 ? (
-                <div style={{ padding: "40px 0", textAlign: "center", color: "#71717a" }}>
-                  <AlertCircle className="w-8 h-8" style={{ margin: "0 auto 8px", opacity: 0.6 }} />
-                  <p style={{ fontSize: "14px" }}>No requirement records found for today.</p>
-                </div>
-              ) : (
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  gap: "20px",
+                  flex: 1,
+                  minHeight: 0,
+                  width: "100%",
+                  flexWrap: "wrap",
+                }}
+              >
+                {/* COMBINED TODAY DEMAND TABLE */}
                 <div
-                  className="vendor-table-box"
+                  className="admin-card vendor-table-card"
                   style={{
+                    background: "#ffffff",
+                    border: "1px solid #eaeaea",
+                    borderRadius: "20px",
+                    padding: "20px 24px",
+                    boxShadow: "0 6px 20px rgba(0, 0, 0, 0.03)",
+                    flex: "2 1 600px",
+                    minHeight: 0,
                     display: "flex",
                     flexDirection: "column",
-                    flex: 1,
-                    minHeight: 0,
-                    maxHeight: "calc(100vh - 270px)",
-                    border: "1px solid #eaeaea",
-                    borderRadius: "14px",
-                    overflow: "hidden",
-                    background: "#ffffff",
                   }}
                 >
-                  {/* 1. FIXED HEADER (OUTSIDE SCROLL AREA) */}
-                  <div style={{ background: "#f8f9fa", borderBottom: "2px solid #eaeaea", flexShrink: 0 }}>
-                    <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", textAlign: "left", fontSize: "14px" }}>
-                      <thead>
-                        <tr
-                          style={{
-                            color: "#71717a",
-                            fontSize: "11px",
-                            fontWeight: 800,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                          }}
-                        >
-                          <th className="vendor-col-num" style={{ padding: "12px 16px", width: "50px" }}>#</th>
-                          <th className="vendor-col-name" style={{ padding: "12px 16px" }}>Product Name</th>
-                          <th className="vendor-col-qty" style={{ padding: "12px 16px", textAlign: "right", width: "150px" }}>
-                            Required Quantity
-                          </th>
-                        </tr>
-                      </thead>
-                    </table>
+                  {/* Header Row with Export Combined CSV */}
+                  <div
+                    className="vendor-table-header-row"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "14px",
+                      flexWrap: "wrap",
+                      gap: "12px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div>
+                      <h2 style={{ fontSize: "18px", fontWeight: 900, color: "#18181b", margin: 0, fontFamily: "var(--font-heading-family)" }}>
+                        COMBINED TODAY DEMAND
+                      </h2>
+                      <span style={{ fontSize: "13px", color: "#71717a", fontWeight: 500 }}>
+                        Aggregated product quantities across all pushes today
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={exportCombinedTodayCSV}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "8px 16px",
+                        fontSize: "13px",
+                        fontWeight: 800,
+                        borderRadius: "8px",
+                        border: "1px solid rgba(222, 37, 30, 0.3)",
+                        background: "#fef2f2",
+                        color: "#de251e",
+                        cursor: "pointer",
+                        fontFamily: "var(--font-heading-family)",
+                        transition: "background 0.2s ease",
+                      }}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Export Combined CSV</span>
+                    </button>
                   </div>
 
-                  {/* 2. SCROLLABLE PRODUCT ROWS CONTAINER (GREEN BOX AREA WITH 5PX CUSTOM SCROLLBAR) */}
+                  {/* TABLE CONTAINER WRAPPER */}
+                  <div
+                    className="vendor-table-box"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      flex: 1,
+                      minHeight: 0,
+                      maxHeight: "calc(100vh - 270px)",
+                      border: "1px solid #eaeaea",
+                      borderRadius: "14px",
+                      overflow: "hidden",
+                      background: "#ffffff",
+                    }}
+                  >
+                    {/* 1. FIXED HEADER */}
+                    <div style={{ background: "#f8f9fa", borderBottom: "2px solid #eaeaea", flexShrink: 0 }}>
+                      <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", textAlign: "left", fontSize: "14px" }}>
+                        <thead>
+                          <tr
+                            style={{
+                              color: "#71717a",
+                              fontSize: "11px",
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            <th className="vendor-col-num" style={{ padding: "12px 16px", width: "50px" }}>#</th>
+                            <th className="vendor-col-name" style={{ padding: "12px 16px" }}>Product Name</th>
+                            <th className="vendor-col-qty" style={{ padding: "12px 16px", textAlign: "right", width: "150px" }}>
+                              Required Quantity
+                            </th>
+                          </tr>
+                        </thead>
+                      </table>
+                    </div>
+
+                    {/* 2. SCROLLABLE PRODUCT ROWS CONTAINER */}
+                    <div
+                      className="custom-scrollbar"
+                      style={{
+                        flex: 1,
+                        minHeight: 0,
+                        overflowY: "auto",
+                        width: "100%",
+                      }}
+                    >
+                      <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", textAlign: "left", fontSize: "14px" }}>
+                        <tbody>
+                          {todayItems.map((item, idx) => (
+                            <tr
+                              key={item.name}
+                              style={{
+                                borderBottom: "1px solid #f4f4f5",
+                                transition: "background 0.15s ease",
+                              }}
+                            >
+                              <td className="vendor-col-num" style={{ padding: "12px 16px", width: "50px", color: "#a1a1aa", fontWeight: 600 }}>
+                                {String(idx + 1).padStart(2, "0")}
+                              </td>
+                              <td className="vendor-col-name" style={{ padding: "12px 16px", fontWeight: 700, color: "#18181b" }}>
+                                {item.name}
+                              </td>
+                              <td
+                                className="vendor-col-qty"
+                                style={{
+                                  padding: "12px 16px",
+                                  width: "150px",
+                                  textAlign: "right",
+                                  fontWeight: 800,
+                                  fontSize: "16px",
+                                  color: "#de251e",
+                                  fontFamily: "var(--font-heading-family)",
+                                }}
+                              >
+                                {item.totalQuantity}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 3. FIXED FOOTER */}
+                    <div style={{ background: "#fff5f5", borderTop: "2px solid #de251e", flexShrink: 0 }}>
+                      <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", textAlign: "left", fontSize: "14px" }}>
+                        <tfoot>
+                          <tr>
+                            <td className="vendor-footer-label" style={{ padding: "14px 16px", fontWeight: 800, color: "#18181b", fontSize: "15px", fontFamily: "var(--font-heading-family)" }}>
+                              TOTAL COMBINED DEMAND
+                            </td>
+                            <td
+                              className="vendor-footer-value"
+                              style={{
+                                padding: "14px 16px",
+                                width: "150px",
+                                textAlign: "right",
+                                fontWeight: 900,
+                                fontSize: "20px",
+                                color: "#de251e",
+                                fontFamily: "var(--font-heading-family)",
+                              }}
+                            >
+                              {todayTotal} units
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* TODAY'S DELIVERY BATCHES (INDIVIDUAL PUSHES) */}
+                <div
+                  className="admin-card vendor-batches-card"
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #eaeaea",
+                    borderRadius: "20px",
+                    padding: "20px 24px",
+                    boxShadow: "0 6px 20px rgba(0, 0, 0, 0.03)",
+                    flex: "1 1 320px",
+                    minHeight: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div style={{ marginBottom: "14px", flexShrink: 0 }}>
+                    <h2 style={{ fontSize: "18px", fontWeight: 900, color: "#18181b", margin: 0, fontFamily: "var(--font-heading-family)" }}>
+                      DELIVERY BATCHES
+                    </h2>
+                    <span style={{ fontSize: "13px", color: "#71717a", fontWeight: 500 }}>
+                      Individual requirement pushes received today
+                    </span>
+                  </div>
+
                   <div
                     className="custom-scrollbar"
                     style={{
                       flex: 1,
                       minHeight: 0,
                       overflowY: "auto",
-                      width: "100%",
+                      paddingRight: "4px",
                     }}
                   >
-                    <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", textAlign: "left", fontSize: "14px" }}>
-                      <tbody>
-                        {todayItems.map((item, idx) => (
-                          <tr
-                            key={item.name}
-                            style={{
-                              borderBottom: "1px solid #f4f4f5",
-                              transition: "background 0.15s ease",
-                            }}
-                          >
-                            <td className="vendor-col-num" style={{ padding: "12px 16px", width: "50px", color: "#a1a1aa", fontWeight: 600 }}>
-                              {String(idx + 1).padStart(2, "0")}
-                            </td>
-                            <td className="vendor-col-name" style={{ padding: "12px 16px", fontWeight: 700, color: "#18181b" }}>
-                              {item.name}
-                            </td>
-                            <td
-                              className="vendor-col-qty"
+                    {todayRequirements.slice().reverse().map((req, idx) => {
+                      const batchNum = idx + 1;
+                      const timeStr = formatPushedTime(req.pushedAt);
+                      return (
+                        <div
+                          key={req.id}
+                          style={{
+                            border: "1px solid #eaeaea",
+                            borderRadius: "12px",
+                            padding: "14px 16px",
+                            marginBottom: "12px",
+                            background: "#f8f9fa",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.01)",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "#de251e" }}>
+                                Batch #{batchNum}
+                              </h4>
+                              <span style={{ fontSize: "11px", color: "#71717a", fontWeight: 500 }}>
+                                Pushed at {timeStr}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => exportToCSV(req)}
                               style={{
-                                padding: "12px 16px",
-                                width: "150px",
-                                textAlign: "right",
+                                padding: "6px 12px",
+                                fontSize: "12px",
                                 fontWeight: 800,
-                                fontSize: "16px",
-                                color: "#de251e",
+                                borderRadius: "6px",
+                                background: "#ffffff",
+                                border: "1px solid #e4e4e7",
+                                color: "#18181b",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                                 fontFamily: "var(--font-heading-family)",
+                                boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
                               }}
                             >
-                              {item.totalQuantity}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* 3. FIXED FOOTER (OUTSIDE SCROLL AREA) */}
-                  <div style={{ background: "#fff5f5", borderTop: "2px solid #de251e", flexShrink: 0 }}>
-                    <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", textAlign: "left", fontSize: "14px" }}>
-                      <tfoot>
-                        <tr>
-                          <td className="vendor-footer-label" style={{ padding: "14px 16px", fontWeight: 800, color: "#18181b", fontSize: "15px", fontFamily: "var(--font-heading-family)" }}>
-                            TOTAL TODAY DEMAND
-                          </td>
-                          <td
-                            className="vendor-footer-value"
-                            style={{
-                              padding: "14px 16px",
-                              width: "150px",
-                              textAlign: "right",
-                              fontWeight: 900,
-                              fontSize: "20px",
-                              color: "#de251e",
-                              fontFamily: "var(--font-heading-family)",
-                            }}
-                          >
-                            {todayTotal} units
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                              <Download className="w-3.5 h-3.5" />
+                              <span>CSV</span>
+                            </button>
+                          </div>
+                          <div style={{ marginTop: "10px", fontSize: "12px", color: "#71717a", display: "flex", gap: "16px", borderTop: "1px dashed #eaeaea", paddingTop: "8px" }}>
+                            <span>Orders: <strong style={{ color: "#18181b" }}>{req.totalPurchases}</strong></span>
+                            <span>Items: <strong style={{ color: "#18181b" }}>{req.totalItems}</strong></span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 

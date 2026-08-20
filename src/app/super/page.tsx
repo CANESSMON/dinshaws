@@ -214,15 +214,41 @@ export default function SuperAdminPage() {
   const [isLoadingLogs, setIsLoadingLogs] = useState<boolean>(false);
   const [isPushingRequirement, setIsPushingRequirement] = useState<boolean>(false);
   const [hasPushedToday, setHasPushedToday] = useState<boolean>(false);
+  const [hasNewPurchasesToPush, setHasNewPurchasesToPush] = useState<boolean>(false);
 
-  const checkTodayRequirementPushed = async () => {
+  const checkTodayRequirementPushed = async (currentTransactions?: any[]) => {
     try {
       const todayDate = new Date().toLocaleDateString("en-CA");
       const res = await fetch("/api/requirements");
       if (res.ok) {
         const data = await res.json();
-        const alreadyPushed = data.some((req: any) => req.date === todayDate);
+        const todayReqs = (data || []).filter((req: any) => req.date === todayDate);
+        const alreadyPushed = todayReqs.length > 0;
         setHasPushedToday(alreadyPushed);
+
+        const txs = currentTransactions || transactions;
+        const startOfDay = new Date(`${todayDate}T00:00:00`).getTime();
+        const endOfDay = new Date(`${todayDate}T23:59:59.999`).getTime();
+        const todayTxs = txs.filter((tx: any) => {
+          const t = new Date(tx.timestamp).getTime();
+          return t >= startOfDay && t <= endOfDay;
+        });
+
+        if (!alreadyPushed) {
+          setHasNewPurchasesToPush(todayTxs.length > 0);
+        } else {
+          // Find the latest push time today
+          const latestPush = todayReqs.reduce((latest: any, cur: any) => {
+            return new Date(cur.pushedAt) > new Date(latest.pushedAt) ? cur : latest;
+          }, todayReqs[0]);
+          const latestPushTime = new Date(latestPush.pushedAt).getTime();
+
+          // Find purchases today that were completed AFTER the latest push
+          const newTxs = todayTxs.filter((tx: any) => {
+            return new Date(tx.timestamp).getTime() > latestPushTime;
+          });
+          setHasNewPurchasesToPush(newTxs.length > 0);
+        }
       }
     } catch (err) {
       console.error("Failed to check if requirements are pushed today:", err);
@@ -230,8 +256,8 @@ export default function SuperAdminPage() {
   };
 
   const handlePushRequirement = async () => {
-    if (hasPushedToday) {
-      showAlert("Today's requirements have already been pushed.", "info");
+    if (hasPushedToday && !hasNewPurchasesToPush) {
+      showAlert("Today's requirements are already up to date.", "info");
       return;
     }
 
@@ -245,14 +271,12 @@ export default function SuperAdminPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        showAlert(`Successfully pushed today's requirements (${data.requirement.totalItems} items from ${data.requirement.totalPurchases} purchases) to the Vendor Supply Portal!`, "success");
-        setHasPushedToday(true);
+        showAlert(`Successfully pushed today's new requirements delta (${data.requirement.totalItems} items from ${data.requirement.totalPurchases} purchases) to the Vendor Supply Portal!`, "success");
+        await fetchTransactions();
       } else {
         const errData = await res.json();
         showAlert(`Failed to push requirements: ${errData.error || "Unknown error"}`, "error");
-        if (errData.error && errData.error.includes("already been pushed")) {
-          setHasPushedToday(true);
-        }
+        await fetchTransactions();
       }
     } catch (err) {
       console.error("Push requirements error", err);
@@ -281,6 +305,7 @@ export default function SuperAdminPage() {
       if (res.ok) {
         const data = await res.json();
         setTransactions(data);
+        await checkTodayRequirementPushed(data);
       }
     } catch (e) {
       console.error("Failed to fetch transaction logs", e);
@@ -295,7 +320,6 @@ export default function SuperAdminPage() {
         fetchEmployees();
       } else if (activeTab === 'transactions') {
         fetchTransactions();
-        checkTodayRequirementPushed();
       }
     }
   }, [isAuthenticated, activeTab]);
@@ -813,17 +837,23 @@ export default function SuperAdminPage() {
               <button
                 type="button"
                 onClick={handlePushRequirement}
-                disabled={isPushingRequirement || transactions.length === 0 || hasPushedToday}
+                disabled={isPushingRequirement || !hasNewPurchasesToPush}
                 className="submit-registration-btn"
                 style={{ width: "auto", padding: "10px 18px", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "8px", margin: 0 }}
-                title={hasPushedToday ? "Today's requirements have already been pushed to the Vendor Supply Portal." : "Aggregate today's purchases and send requirement list to Vendor Portal"}
+                title={!hasNewPurchasesToPush ? "No new purchases to push to the Vendor Portal." : "Aggregate today's new purchases and send requirement list to Vendor Portal"}
               >
                 {isPushingRequirement ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                <span>{hasPushedToday ? "REQUIREMENTS PUSHED" : "PUSH REQUIREMENTS TO VENDOR"}</span>
+                <span>
+                  {hasPushedToday
+                    ? hasNewPurchasesToPush
+                      ? "PUSH NEW REQUIREMENTS (DELTA)"
+                      : "REQUIREMENTS UP TO DATE"
+                    : "PUSH REQUIREMENTS TO VENDOR"}
+                </span>
               </button>
             </div>
 

@@ -1,12 +1,6 @@
 "use client";
 
 import { ProductItem } from "@/components/ProductCard";
-import {
-  DAIRY_MILK_PRODUCTS,
-  DAIRY_DAHI_PRODUCTS,
-  DAIRY_PANEER_PRODUCTS,
-  DAIRY_BUTTER_PRODUCTS,
-} from "@/data/products";
 
 export interface SectionProducts {
   sectionTitle: string;
@@ -14,10 +8,48 @@ export interface SectionProducts {
 }
 
 export const DEFAULT_DAIRY_SECTIONS: SectionProducts[] = [
-  { sectionTitle: "MILK", products: DAIRY_MILK_PRODUCTS },
-  { sectionTitle: "DAHI", products: DAIRY_DAHI_PRODUCTS },
-  { sectionTitle: "PANEER", products: DAIRY_PANEER_PRODUCTS },
-  { sectionTitle: "BUTTER", products: DAIRY_BUTTER_PRODUCTS },
+  {
+    sectionTitle: "MILK",
+    products: [
+      { id: "milk-aahar-170", name: "Aahar Milk 170 ml", imageSrc: "/products/milk/Milk_Aahar.png" },
+      { id: "milk-phoorti-180", name: "Phoorti Milk 180 ml", imageSrc: "/products/milk/Milk_Phoorti.png" },
+      { id: "milk-aahar-500", name: "Aahar Milk 500 ml", imageSrc: "/products/milk/Milk_Aahar.png" },
+      { id: "milk-phoorti-500", name: "Phoorti Milk 500 ml", imageSrc: "/products/milk/Milk_Phoorti.png" },
+      { id: "milk-sarvottam-500", name: "Sarvottam Gold 500 ml", imageSrc: "/products/milk/Milk_Sarvottam.png" },
+      { id: "milk-amrik-500", name: "Amrik Milk 500 ml", imageSrc: "/products/milk/Milk_Amrik.png" },
+      { id: "milk-aahar-1l", name: "Aahar Milk 1 L", imageSrc: "/products/milk/Milk_Aahar.png" },
+      { id: "milk-sarvottam-1l", name: "Sarvottam Gold 1 L", imageSrc: "/products/milk/Milk_Sarvottam.png" },
+      { id: "milk-amrik-1l", name: "Amrik Milk 1 L", imageSrc: "/products/milk/Milk_Amrik.png" },
+      { id: "milk-aahar-2l", name: "Aahar Milk 2 L", imageSrc: "/products/milk/Milk_Aahar.png" }
+    ]
+  },
+  {
+    sectionTitle: "DAHI",
+    products: [
+      { id: "dahi-mishti-160gm", name: "Mishti Dahi 160gm", imageSrc: "/products/dahi/Dahi_Mishti_Dahi.png" },
+      { id: "dahi-fresh-200ml", name: "Fresh Dahi 200 ml", imageSrc: "/products/dahi/Dahi_Dahi.png" },
+      { id: "dahi-fresh-1kg", name: "Fresh Dahi 1 kg", imageSrc: "/products/dahi/Dahi_Dahi.png" },
+      { id: "dahi-kadhi-1kg", name: "Kadhi Dahi 1 kg", imageSrc: "/products/dahi/Dahi_Kadhi_Dahi.png" },
+      { id: "dahi-fresh-5kg", name: "Fresh Dahi 5 kg", imageSrc: "/products/dahi/Dahi_Dahi.png" },
+      { id: "dahi-kadhi-5kg", name: "Kadhi Dahi 5 kg", imageSrc: "/products/dahi/Dahi_Kadhi_Dahi.png" },
+      { id: "dahi-kadhi-10kg", name: "Kadhi Dahi 10 kg", imageSrc: "/products/dahi/Dahi_Kadhi_Dahi.png" }
+    ]
+  },
+  {
+    sectionTitle: "PANEER",
+    products: [
+      { id: "paneer-fresh-200g", name: "Fresh Paneer 200g", imageSrc: "/products/paneer/Paneer_Fresh_Paneer.png" },
+      { id: "paneer-fresh-500g", name: "Fresh Paneer 500g", imageSrc: "/products/paneer/Paneer_Fresh_Paneer.png" },
+      { id: "paneer-malai-500g", name: "Malai Paneer 500g", imageSrc: "/products/paneer/Paneer_Frozen_Paneer.png" },
+      { id: "paneer-fresh-1kg", name: "Fresh Paneer 1 kg", imageSrc: "/products/paneer/Paneer_Fresh_Paneer.png" }
+    ]
+  },
+  {
+    sectionTitle: "BUTTER",
+    products: [
+      { id: "butter-100gm", name: "Butter 100gm", imageSrc: "/products/butter/Butter.png" }
+    ]
+  }
 ];
 
 /**

@@ -39,7 +39,8 @@ import {
   History,
   AlertCircle,
   CircleUserRound,
-  Key
+  Key,
+  Printer
 } from "lucide-react";
 import { CustomDialog } from "@/components/CustomDialog";
 
@@ -155,6 +156,14 @@ export default function AdminPage() {
   const [showSuperPass, setShowSuperPass] = useState<boolean>(false);
   const [showVendorPass, setShowVendorPass] = useState<boolean>(false);
 
+  // Receipt Settings State
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
+  const [receiptShowLogo, setReceiptShowLogo] = useState<boolean>(true);
+  const [receiptShowUser, setReceiptShowUser] = useState<boolean>(true);
+  const [receiptShowTimestamp, setReceiptShowTimestamp] = useState<boolean>(true);
+  const [isSavingReceipt, setIsSavingReceipt] = useState<boolean>(false);
+  const [receiptPreviewType, setReceiptPreviewType] = useState<"canteen" | "gate">("canteen");
+
   // Custom dialog alert/confirm state
   const [dialogState, setDialogState] = useState<{
     isOpen: boolean;
@@ -262,6 +271,55 @@ export default function AdminPage() {
       showAlert("Error connecting to credential server.", "error");
     } finally {
       setIsSavingCreds(false);
+    }
+  };
+
+  // Load receipt settings from DB
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetch("/api/receipt-settings")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            setReceiptShowLogo(data.showLogo);
+            setReceiptShowUser(data.showUser);
+            setReceiptShowTimestamp(data.showTimestamp);
+          }
+        })
+        .catch((err) => console.error("Error loading receipt settings:", err));
+    }
+  }, [isAuthenticated]);
+
+  const handleSaveReceiptSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingReceipt(true);
+    try {
+      const response = await fetch("/api/receipt-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headerText: "",
+          subHeaderText: "",
+          kioskName: "",
+          phone: "",
+          footerText: "",
+          showLogo: receiptShowLogo,
+          showUser: receiptShowUser,
+          showTimestamp: receiptShowTimestamp
+        }),
+      });
+
+      if (response.ok) {
+        showAlert("Receipt print settings updated successfully!", "success");
+        setIsReceiptModalOpen(false);
+      } else {
+        showAlert("Failed to update receipt settings.", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showAlert("Error connecting to settings server.", "error");
+    } finally {
+      setIsSavingReceipt(false);
     }
   };
 
@@ -552,6 +610,12 @@ export default function AdminPage() {
           <button onClick={() => setIsCredModalOpen(true)} className="admin-add-modal-btn" style={{ background: "#1f2937", borderColor: "#374151" }}>
             <Key className="w-4 h-4 text-gray-300" />
             <span>MANAGE CREDENTIALS</span>
+          </button>
+
+          {/* Receipt Settings Button */}
+          <button onClick={() => setIsReceiptModalOpen(true)} className="admin-add-modal-btn" style={{ background: "#059669", borderColor: "#047857" }}>
+            <Printer className="w-4 h-4 text-emerald-100" />
+            <span>RECEIPT SETTINGS</span>
           </button>
 
           {/* Add Product Button */}
@@ -1154,6 +1218,229 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* RECEIPT PRINT SETTINGS MODAL */}
+      {isReceiptModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsReceiptModalOpen(false)}>
+          <div className="modal-container landscape-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "980px" }}>
+            <div className="modal-header">
+              <div className="modal-title-box">
+                <h2 className="modal-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Printer className="w-5 h-5 text-primary" />
+                  <span>RECEIPT PRINT & PREVIEW SETTINGS</span>
+                </h2>
+                <p className="modal-subtitle">Customize thermal receipt header, footer, logo, and metadata options</p>
+              </div>
+              <button onClick={() => setIsReceiptModalOpen(false)} className="modal-close-btn">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="modal-grid-split">
+              {/* Left Column: Form Settings */}
+              <div className="modal-form-scroll-wrapper" style={{ paddingRight: "16px" }}>
+                <form onSubmit={handleSaveReceiptSettings} className="modal-form-inner" style={{ gap: "16px" }}>
+
+                  {/* Toggle checkboxes */}
+                  <div className="form-group" style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
+                    <label className="form-label" style={{ marginBottom: "2px" }}>Metadata Toggles</label>
+                    
+                    {/* Show Logo */}
+                    <button
+                      type="button"
+                      onClick={() => setReceiptShowLogo(!receiptShowLogo)}
+                      className="image-checkbox-btn"
+                      style={{ justifyContent: "flex-start", width: "100%" }}
+                    >
+                      {receiptShowLogo ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-muted" />
+                      )}
+                      <span>Display Dinshaw&apos;s Logo Header</span>
+                    </button>
+
+                    {/* Show Employee */}
+                    <button
+                      type="button"
+                      onClick={() => setReceiptShowUser(!receiptShowUser)}
+                      className="image-checkbox-btn"
+                      style={{ justifyContent: "flex-start", width: "100%" }}
+                    >
+                      {receiptShowUser ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-muted" />
+                      )}
+                      <span>Display Employee ID and Name</span>
+                    </button>
+
+                    {/* Show Timestamp */}
+                    <button
+                      type="button"
+                      onClick={() => setReceiptShowTimestamp(!receiptShowTimestamp)}
+                      className="image-checkbox-btn"
+                      style={{ justifyContent: "flex-start", width: "100%" }}
+                    >
+                      {receiptShowTimestamp ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-muted" />
+                      )}
+                      <span>Display Date & Timestamp</span>
+                    </button>
+                  </div>
+
+                  {/* Submit buttons */}
+                  <div className="modal-actions-bar" style={{ padding: "10px 0 0 0", borderTop: "none" }}>
+                    <button
+                      type="submit"
+                      className="admin-submit-btn modal-submit-btn full-width-submit"
+                      disabled={isSavingReceipt}
+                      style={{ background: "#059669" }}
+                    >
+                      {isSavingReceipt ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" />
+                          <span>SAVE RECEIPT SETTINGS</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Column: Thermal Paper Receipt Live Preview */}
+              <div className="modal-preview-column" style={{ background: "#f8f9fa", borderLeft: "1px solid var(--border-color)", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: "16px" }}>
+                <div className="preview-card-header" style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Eye className="w-4 h-4 text-primary" />
+                    <span>LIVE RECEIPT PREVIEWS</span>
+                  </div>
+                </div>
+
+                {/* Receipt Copy Select Tabs */}
+                <div style={{ display: "flex", gap: "8px", width: "100%", background: "#f1f5f9", padding: "4px", borderRadius: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setReceiptPreviewType("canteen")}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      borderRadius: "8px",
+                      border: "none",
+                      cursor: "pointer",
+                      background: receiptPreviewType === "canteen" ? "#ffffff" : "transparent",
+                      color: receiptPreviewType === "canteen" ? "var(--primary)" : "#64748b",
+                      boxShadow: receiptPreviewType === "canteen" ? "0 2px 6px rgba(0,0,0,0.05)" : "none",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    CANTEEN COPY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReceiptPreviewType("gate")}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      borderRadius: "8px",
+                      border: "none",
+                      cursor: "pointer",
+                      background: receiptPreviewType === "gate" ? "#ffffff" : "transparent",
+                      color: receiptPreviewType === "gate" ? "var(--primary)" : "#64748b",
+                      boxShadow: receiptPreviewType === "gate" ? "0 2px 6px rgba(0,0,0,0.05)" : "none",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    GATE EXIT COPY
+                  </button>
+                </div>
+
+                {/* Monospace Paper Container */}
+                <div
+                  style={{
+                    background: "#ffffff",
+                    width: "280px",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+                    borderTop: "3px dashed #d1d5db",
+                    borderBottom: "3px dashed #d1d5db",
+                    padding: "16px",
+                    fontFamily: "'Courier New', Courier, monospace",
+                    fontSize: "12px",
+                    color: "#1f2937",
+                    lineHeight: "1.4",
+                    boxSizing: "border-box"
+                  }}
+                >
+                  {receiptShowLogo && (
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
+                      <div style={{ background: "#de251e", padding: "4px 8px", borderRadius: "4px", display: "inline-block" }}>
+                        <strong style={{ color: "#ffffff", fontSize: "11px", letterSpacing: "1px" }}>DINSHAW'S</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ textAlign: "center", fontWeight: "bold", textTransform: "uppercase", fontSize: "13px" }}>
+                    {receiptPreviewType === "canteen" ? "*** CANTEEN COPY ***" : "*** GATE COPY ***"}
+                  </div>
+
+                  <div style={{ borderBottom: "1px double #9ca3af", margin: "6px 0" }}></div>
+
+                  {receiptShowTimestamp && (
+                    <div><b>Date:</b> {new Date().toLocaleDateString("en-IN")} {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
+                  )}
+                  <div><b>Order ID:</b> ORDER-MOCK-45217</div>
+                  
+                  {receiptShowUser && (
+                    <div><b>Employee:</b> Shashank (emp-999)</div>
+                  )}
+
+                  <div style={{ borderBottom: "1px dashed #d1d5db", margin: "6px 0" }}></div>
+
+                  <table style={{ width: "100%", fontSize: "11px", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px dashed #d1d5db" }}>
+                        <th style={{ textAlign: "left", paddingBottom: "4px" }}>Item Description</th>
+                        <th style={{ textAlign: "right", width: "40px", paddingBottom: "4px" }}>Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: "4px 0" }}>Fresh Paneer 500g</td>
+                        <td style={{ textAlign: "right" }}>2</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: "4px 0" }}>Mishti Dahi 100g</td>
+                        <td style={{ textAlign: "right" }}>3</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div style={{ borderBottom: "1px dashed #d1d5db", margin: "6px 0" }}></div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "12px" }}>
+                    <span>TOTAL ITEMS</span>
+                    <span>5 units</span>
+                  </div>
+
+                  <div style={{ borderBottom: "1px double #9ca3af", margin: "6px 0" }}></div>
+                </div>
+
+                <p style={{ fontSize: "11px", color: "#6b7280", textAlign: "center", maxWidth: "280px" }}>
+                  This shows exactly how the receipt layouts dynamically render during customer checkout operations.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

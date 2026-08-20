@@ -8,6 +8,12 @@ import { CartFloatingBar } from "@/components/CartFloatingBar";
 import { CartPage } from "@/components/CartPage";
 import { ThankYouPage } from "@/components/ThankYouPage";
 import { fetchCatalogAsync, SectionProducts } from "@/lib/productStore";
+import {
+  generateTextReceipt,
+  generateHtmlReceipt,
+  downloadReceiptFile,
+  printReceiptHtml
+} from "@/lib/receiptHelper";
 
 export interface CartMapItem {
   product: ProductItem;
@@ -123,10 +129,87 @@ export default function KioskPage() {
     0
   );
 
+  const handleReceiptAction = async (purchase: any) => {
+    try {
+      const settingsRes = await fetch("/api/receipt-settings");
+      const settings = settingsRes.ok 
+        ? await settingsRes.json() 
+        : {
+            headerText: "DINSHAW'S ICE CREAM & DAIRY",
+            subHeaderText: "Welcome to Dinshaw's Kiosk",
+            kioskName: "Kiosk #01",
+            phone: "+91 12345 67890",
+            footerText: "Please present this receipt at the counter to collect your order.",
+            showLogo: true,
+            showUser: true,
+            showTimestamp: true
+          };
+
+      const downloadFlag = process.env.NEXT_PUBLIC_DOWNLOAD_RECEIPT === "true";
+      
+      const receiptItems = Array.isArray(purchase.items)
+        ? purchase.items.map((item: any) => ({
+            name: item.name,
+            quantity: item.quantity
+          }))
+        : [];
+
+      if (downloadFlag) {
+        // 1. Generate & Download Canteen Copy
+        const canteenText = generateTextReceipt(
+          receiptItems,
+          purchase.id,
+          purchase.userId,
+          purchase.userName,
+          settings,
+          "canteen"
+        );
+        downloadReceiptFile(canteenText, `${purchase.id}_canteen`);
+
+        // 2. Generate & Download Gate Exit Copy
+        const gateText = generateTextReceipt(
+          receiptItems,
+          purchase.id,
+          purchase.userId,
+          purchase.userName,
+          settings,
+          "gate"
+        );
+        downloadReceiptFile(gateText, `${purchase.id}_gate`);
+      } else {
+        // 1. Generate & Print Canteen Copy
+        const canteenHtml = generateHtmlReceipt(
+          receiptItems,
+          purchase.id,
+          purchase.userId,
+          purchase.userName,
+          settings,
+          "canteen"
+        );
+        printReceiptHtml(canteenHtml);
+
+        // 2. Generate & Print Gate Copy (with delay to avoid browser printer overlap blocking)
+        setTimeout(() => {
+          const gateHtml = generateHtmlReceipt(
+            receiptItems,
+            purchase.id,
+            purchase.userId,
+            purchase.userName,
+            settings,
+            "gate"
+          );
+          printReceiptHtml(gateHtml);
+        }, 1200);
+      }
+    } catch (err) {
+      console.error("Error generating or printing receipts:", err);
+    }
+  };
+
   const handleCheckout = async () => {
     try {
       // POST purchase log to backend database
-      await fetch("/api/purchases", {
+      const res = await fetch("/api/purchases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -136,6 +219,14 @@ export default function KioskPage() {
           totalItems
         })
       });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.purchase) {
+          // Trigger automatic print or download based on .env configuration
+          await handleReceiptAction(data.purchase);
+        }
+      }
     } catch (e) {
       console.warn("Failed to log checkout transaction", e);
     }
