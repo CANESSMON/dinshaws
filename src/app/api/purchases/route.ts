@@ -96,8 +96,27 @@ export async function POST(req: Request) {
 
     const finalTotalItems = totalItems || items.reduce((sum: number, i: any) => sum + i.quantity, 0);
 
+    // Get the latest purchase to increment the ID
+    const lastPurchase = await prisma.purchase.findFirst({
+      orderBy: { timestamp: "desc" }
+    });
+
+    let nextNum = 1;
+    if (lastPurchase) {
+      const match = lastPurchase.id.match(/^DS-(\d+)$/);
+      if (match) {
+        nextNum = parseInt(match[1], 10) + 1;
+      } else {
+        const count = await prisma.purchase.count();
+        nextNum = count + 1;
+      }
+    }
+
+    const nextId = `DS-${String(nextNum).padStart(4, "0")}`;
+
     const newPurchase = await prisma.purchase.create({
       data: {
+        id: nextId,
         userId: uId,
         userName: user.name, // Use the actual name stored in database
         items: formattedItems,

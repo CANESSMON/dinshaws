@@ -1399,7 +1399,7 @@ export default function AdminPage() {
                   {receiptShowTimestamp && (
                     <div><b>Date:</b> {new Date().toLocaleDateString("en-IN")} {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
                   )}
-                  <div><b>Order ID:</b> ORDER-MOCK-45217</div>
+                  <div><b>Order ID:</b> DS-1001</div>
                   
                   {receiptShowUser && (
                     <div><b>Employee:</b> Shashank (emp-999)</div>
